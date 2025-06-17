@@ -26,6 +26,7 @@ const Upload: React.FC<UploadProps> = ({ onProcessingStart, onProcessingComplete
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length > 0) {
         setJdFile(acceptedFiles[0]);
+        setError(''); // Clear any previous errors
       }
     }
   });
@@ -40,6 +41,7 @@ const Upload: React.FC<UploadProps> = ({ onProcessingStart, onProcessingComplete
     multiple: true,
     onDrop: (acceptedFiles) => {
       setResumeFiles(prev => [...prev, ...acceptedFiles]);
+      setError(''); // Clear any previous errors
     }
   });
 
@@ -72,6 +74,12 @@ const Upload: React.FC<UploadProps> = ({ onProcessingStart, onProcessingComplete
         <p className="text-gray-600 text-lg">
           Upload your job description and candidate resumes to begin the AI-powered screening process.
         </p>
+        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-green-800 text-sm">
+            <strong>Real Processing:</strong> Your files will be processed using actual text extraction and similarity analysis. 
+            Supported formats: PDF, DOC, DOCX, TXT.
+          </p>
+        </div>
       </div>
 
       {error && (
@@ -203,6 +211,9 @@ const Upload: React.FC<UploadProps> = ({ onProcessingStart, onProcessingComplete
               </div>
               <p className="text-gray-600">
                 AI is analyzing resumes and computing similarity scores...
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Processing your actual files with text extraction and similarity analysis
               </p>
             </div>
           </div>
