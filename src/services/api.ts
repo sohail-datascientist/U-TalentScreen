@@ -1,6 +1,6 @@
 import { ProcessedResult } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000'; // Adjust based on your Django backend URL
+const SUPABASE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-resumes`;
 
 export const processResumes = async (jdFile: File, resumeFiles: File[]): Promise<ProcessedResult[]> => {
   const formData = new FormData();
@@ -11,20 +11,22 @@ export const processResumes = async (jdFile: File, resumeFiles: File[]): Promise
   });
 
   try {
-    const response = await fetch(`${API_BASE_URL}/process_resumes/`, {
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
     
     if (data.success) {
-      // Assuming the Django backend returns results in the session or directly
-      // You might need to adjust this based on your actual Django response format
       return data.results || [];
     } else {
       throw new Error(data.error || 'Processing failed');
@@ -37,24 +39,35 @@ export const processResumes = async (jdFile: File, resumeFiles: File[]): Promise
 
 export const saveFilteredResults = async (results: ProcessedResult[]): Promise<void> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/save_filtered_results/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ results }),
-    });
+    // Create CSV content
+    const csvContent = [
+      ['Name', 'Similarity', 'University', 'Email', 'Skills', 'Soft Skills', 'Experience', 'Location'],
+      ...results.map(result => [
+        result.name,
+        result.similarity,
+        result.university,
+        result.email,
+        result.skills,
+        result.soft_skills,
+        result.experience,
+        result.location
+      ])
+    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (!data.message) {
-      throw new Error('Failed to save filtered results');
-    }
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `filtered_results_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    return Promise.resolve();
   } catch (error) {
     console.error('Error saving filtered results:', error);
-    throw error;
+    throw new Error('Failed to save filtered results.');
   }
 };
